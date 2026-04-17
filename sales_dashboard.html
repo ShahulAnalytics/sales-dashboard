@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Analytics Dashboard — ShahulAnalytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;600;800&display=swap');
+
+:root {
+  --bg:       #080b14;
+  --surf:     #0e1221;
+  --card:     #121627;
+  --border:   #1e2440;
+  --accent:   #38bdf8;
+  --accent2:  #fb7185;
+  --green:    #4ade80;
+  --amber:    #fbbf24;
+  --purple:   #c084fc;
+  --teal:     #2dd4bf;
+  --text:     #cbd5e1;
+  --muted:    #475569;
+  --white:    #f1f5f9;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Subtle grid background */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none; z-index: 0;
+}
+
+/* ── Top Nav ── */
+.topnav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,11,20,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 56px;
+}
+.nav-brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 800; font-size: 1rem; color: var(--white);
+  letter-spacing: -0.3px;
+}
+.nav-brand .dot { color: var(--accent); }
+.nav-pills { display: flex; gap: 6px; }
+.pill {
+  padding: 5px 14px; border-radius: 20px; font-size: 0.72rem;
+  font-weight: 600; cursor: pointer; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); transition: all .2s;
+  font-family: 'Outfit', sans-serif;
+}
+.pill.active, .pill:hover {
+  background: rgba(56,189,248,0.1); color: var(--accent);
+  border-color: rgba(56,189,248,0.3);
+}
+.nav-right { font-size: 0.72rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+/* ── Filters Bar ── */
+.filters-bar {
+  background: var(--surf);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 28px;
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  position: relative; z-index: 1;
+}
+.filter-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-right: 4px; }
+select.flt {
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--text); font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem; padding: 6px 28px 6px 12px; border-radius: 8px;
+  appearance: none; cursor: pointer; outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23475569'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  transition: border-color .2s;
+}
+select.flt:hover, select.flt:focus { border-color: var(--accent); }
+.filter-reset {
+  margin-left: auto; padding: 6px 14px; border-radius: 8px;
+  background: rgba(251,113,133,0.1); border: 1px solid rgba(251,113,133,0.25);
+  color: var(--accent2); font-size: 0.72rem; font-family: 'Outfit', sans-serif;
+  cursor: pointer; transition: all .2s;
+}
+.filter-reset:hover { background: rgba(251,113,133,0.2); }
+
+/* ── Main Content ── */
+.content { padding: 24px 28px 48px; position: relative; z-index: 1; }
+
+/* ── KPI Grid ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px; margin-bottom: 20px;
+}
+.kpi {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px 16px;
+  position: relative; overflow: hidden;
+  transition: transform .25s, box-shadow .25s;
+  animation: slideUp .5s ease both;
+}
+.kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.kpi::after {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: var(--kpi-color, var(--accent));
+  border-radius: 14px 14px 0 0;
+}
+.kpi-icon { font-size: 1.3rem; margin-bottom: 8px; }
+.kpi-val {
+  font-size: 1.5rem; font-weight: 800;
+  color: var(--kpi-color, var(--accent));
+  font-family: 'DM Mono', monospace;
+  letter-spacing: -1px;
+}
+.kpi-name { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-top: 5px; }
+.kpi-sub  { font-size: 0.7rem; color: var(--green); margin-top: 4px; }
+
+/* ── Chart Grid ── */
+.grid-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.grid-eq { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 20px;
+  animation: slideUp .5s ease both;
+}
+.card-title {
+  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 2px; color: var(--muted);
+  margin-bottom: 16px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title span { color: var(--accent); }
+.chart-wrap { position: relative; }
+
+/* ── Table ── */
+.rep-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.rep-table th {
+  font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--muted); padding: 8px 10px; text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.rep-table td { padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.rep-table tr:hover td { background: rgba(56,189,248,0.03); }
+.rank-num { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.7rem; }
+.money { font-family: 'DM Mono', monospace; color: var(--accent); }
+.badge-top {
+  display: inline-block; padding: 2px 9px; border-radius: 20px;
+  font-size: 0.62rem; font-weight: 600;
+  background: rgba(74,222,128,0.1); color: var(--green);
+  border: 1px solid rgba(74,222,128,0.25);
+}
+.badge-mid {
+  display: inline-block; padding: 2px 9px; border-radius: 20px;
+  font-size: 0.62rem;
+  background: rgba(251,191,36,0.1); color: var(--amber);
+  border: 1px solid rgba(251,191,36,0.2);
+}
+
+/* ── Footer ── */
+.footer {
+  text-align: center; padding: 20px;
+  font-size: 0.68rem; color: var(--muted);
+  border-top: 1px solid var(--border);
+  position: relative; z-index: 1;
+}
+.footer a { color: var(--accent); text-decoration: none; }
+
+/* ── Animations ── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: none; }
+}
+.kpi:nth-child(1) { animation-delay:.05s }
+.kpi:nth-child(2) { animation-delay:.1s }
+.kpi:nth-child(3) { animation-delay:.15s }
+.kpi:nth-child(4) { animation-delay:.2s }
+.kpi:nth-child(5) { animation-delay:.25s }
+.kpi:nth-child(6) { animation-delay:.3s }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+  .grid-2, .grid-3, .grid-eq { grid-template-columns: 1fr; }
+  .filters-bar { padding: 12px 16px; }
+  .content { padding: 16px; }
+}
+@media (max-width: 500px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .topnav { padding: 0 16px; }
+  .nav-pills { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<nav class="topnav">
+  <div class="nav-brand">📊 Shahul<span class="dot">.</span>Analytics</div>
+  <div class="nav-pills">
+    <button class="pill active">Overview</button>
+    <button class="pill">Products</button>
+    <button class="pill">Reps</button>
+  </div>
+  <div class="nav-right" id="live-time"></div>
+</nav>
+
+<!-- Filters -->
+<div class="filters-bar">
+  <span class="filter-label">Filter:</span>
+  <select class="flt" id="f-region" onchange="applyFilters()">
+    <option value="all">All Regions</option>
+    <option>North</option><option>South</option>
+    <option>East</option><option>West</option><option>Central</option>
+  </select>
+  <select class="flt" id="f-channel" onchange="applyFilters()">
+    <option value="all">All Channels</option>
+    <option>Online</option><option>In-Store</option><option>Reseller</option>
+  </select>
+  <select class="flt" id="f-category" onchange="applyFilters()">
+    <option value="all">All Categories</option>
+    <option>Electronics</option><option>Accessories</option>
+    <option>Office</option><option>Stationery</option>
+  </select>
+  <select class="flt" id="f-quarter" onchange="applyFilters()">
+    <option value="all">Full Year 2024</option>
+    <option value="Q1">Q1 (Jan–Mar)</option>
+    <option value="Q2">Q2 (Apr–Jun)</option>
+    <option value="Q3">Q3 (Jul–Sep)</option>
+    <option value="Q4">Q4 (Oct–Dec)</option>
+  </select>
+  <button class="filter-reset" onclick="resetFilters()">✕ Reset</button>
+</div>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi" style="--kpi-color:#38bdf8">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-val" id="kpi-rev">$487.2K</div>
+      <div class="kpi-name">Total Revenue</div>
+      <div class="kpi-sub">↑ Full Year</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#fb7185">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-val" id="kpi-profit" style="color:#fb7185">$195.4K</div>
+      <div class="kpi-name">Total Profit</div>
+      <div class="kpi-sub">↑ Strong</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#4ade80">
+      <div class="kpi-icon">🎯</div>
+      <div class="kpi-val" id="kpi-margin" style="color:#4ade80">40.1%</div>
+      <div class="kpi-name">Profit Margin</div>
+      <div class="kpi-sub">↑ Healthy</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#fbbf24">
+      <div class="kpi-icon">🧾</div>
+      <div class="kpi-val" id="kpi-txn" style="color:#fbbf24">1,000</div>
+      <div class="kpi-name">Transactions</div>
+      <div class="kpi-sub">Full Dataset</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#c084fc">
+      <div class="kpi-icon">🛒</div>
+      <div class="kpi-val" id="kpi-aov" style="color:#c084fc">$487</div>
+      <div class="kpi-name">Avg Order Value</div>
+      <div class="kpi-sub">Per Transaction</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#2dd4bf">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-val" id="kpi-units" style="color:#2dd4bf">1,823</div>
+      <div class="kpi-name">Units Sold</div>
+      <div class="kpi-sub">All Products</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Trend + Region -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span>▸</span> Monthly Revenue & Profit Trend</div>
+      <div class="chart-wrap"><canvas id="trendChart" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>▸</span> Revenue by Region</div>
+      <div class="chart-wrap"><canvas id="regionChart" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 2: Products + Category -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span>▸</span> Top Products by Revenue</div>
+      <div class="chart-wrap"><canvas id="productChart" height="220"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>▸</span> Revenue by Category</div>
+      <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center;">
+        <canvas id="categoryChart" height="220" style="max-width:280px"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Channel + Leaderboard -->
+  <div class="grid-eq">
+    <div class="card">
+      <div class="card-title"><span>▸</span> Revenue by Channel</div>
+      <div class="chart-wrap"><canvas id="channelChart" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>▸</span> Sales Rep Leaderboard</div>
+      <table class="rep-table">
+        <thead>
+          <tr><th>#</th><th>Rep</th><th>Revenue</th><th>Deals</th><th>Status</th></tr>
+        </thead>
+        <tbody id="rep-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  ShahulAnalytics &nbsp;·&nbsp; Sales Dashboard 2024 &nbsp;·&nbsp;
+  Python · SQL · Built for <a href="https://github.com/ShahulAnalytics" target="_blank">github.com/ShahulAnalytics</a>
+</div>
+
+<script>
+// ── Live Clock ──────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('live-time').textContent =
+    now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ── Seed-based random (reproducible data) ───────────────────────────────────
+function seededRand(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+// ── Generate Sales Data ──────────────────────────────────────────────────────
+const PRODUCTS = [
+  { name: 'Laptop Pro',     category: 'Electronics', price: 1200 },
+  { name: 'Standing Desk',  category: 'Office',      price: 550  },
+  { name: 'Monitor 27"',    category: 'Electronics', price: 400  },
+  { name: 'Headphones BT',  category: 'Electronics', price: 180  },
+  { name: 'Keyboard Mech',  category: 'Accessories', price: 130  },
+  { name: 'Webcam HD',      category: 'Electronics', price: 95   },
+  { name: 'USB-C Hub',      category: 'Accessories', price: 80   },
+  { name: 'Desk Lamp LED',  category: 'Office',      price: 60   },
+  { name: 'Wireless Mouse', category: 'Accessories', price: 45   },
+  { name: 'Notebook Pack',  category: 'Stationery',  price: 20   },
+];
+const REGIONS   = ['North','South','East','West','Central'];
+const CHANNELS  = ['Online','In-Store','Reseller'];
+const REPS      = ['Alice Johnson','Bob Smith','Carol White','David Brown','Eva Martinez','Frank Lee','Grace Kim','Henry Patel'];
+const QUARTERS  = { Q1:[1,2,3], Q2:[4,5,6], Q3:[7,8,9], Q4:[10,11,12] };
+
+const rng = seededRand(42);
+const ALL_SALES = [];
+for (let i = 0; i < 1000; i++) {
+  const month    = Math.floor(rng() * 12) + 1;
+  const prod     = PRODUCTS[Math.floor(rng() * PRODUCTS.length)];
+  const qty      = [1,2,3,4,5][Math.floor(rng() * 5)];
+  const discount = [0,0.05,0.10,0.15,0.20][Math.floor(rng() * 5)];
+  const seasonal = month >= 10 ? 1.3 : 1.0;
+  const unitPrice= Math.round(prod.price * (1 - discount) * seasonal * 100) / 100;
+  const revenue  = Math.round(unitPrice * qty * 100) / 100;
+  const cost     = Math.round(prod.price * qty * 0.55 * 100) / 100;
+  ALL_SALES.push({
+    month, product: prod.name, category: prod.category,
+    region: REGIONS[Math.floor(rng() * REGIONS.length)],
+    channel: CHANNELS[Math.floor(rng() * CHANNELS.length)],
+    rep: REPS[Math.floor(rng() * REPS.length)],
+    qty, revenue, profit: Math.round((revenue - cost) * 100) / 100,
+  });
+}
+
+// ── Chart Defaults ───────────────────────────────────────────────────────────
+Chart.defaults.color = '#475569';
+Chart.defaults.borderColor = '#1e2440';
+Chart.defaults.font.family = 'Outfit, sans-serif';
+const BG = '#121627';
+const PALETTE = ['#38bdf8','#fb7185','#4ade80','#fbbf24','#c084fc','#2dd4bf','#f97316','#a3e635'];
+
+let charts = {};
+
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+// ── Filter & Compute ─────────────────────────────────────────────────────────
+function getFiltered() {
+  const region  = document.getElementById('f-region').value;
+  const channel = document.getElementById('f-channel').value;
+  const cat     = document.getElementById('f-category').value;
+  const quarter = document.getElementById('f-quarter').value;
+  const qMonths = quarter !== 'all' ? QUARTERS[quarter] : null;
+
+  return ALL_SALES.filter(s =>
+    (region  === 'all' || s.region  === region)  &&
+    (channel === 'all' || s.channel === channel) &&
+    (cat     === 'all' || s.category === cat)    &&
+    (!qMonths || qMonths.includes(s.month))
+  );
+}
+
+function fmt(v) {
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
+  return '$' + v.toFixed(0);
+}
+
+// ── Render All ───────────────────────────────────────────────────────────────
+function renderAll() {
+  const data = getFiltered();
+  if (!data.length) return;
+
+  // KPIs
+  const totalRev    = data.reduce((a,s) => a + s.revenue, 0);
+  const totalProfit = data.reduce((a,s) => a + s.profit,  0);
+  const totalUnits  = data.reduce((a,s) => a + s.qty,     0);
+  document.getElementById('kpi-rev').textContent    = fmt(totalRev);
+  document.getElementById('kpi-profit').textContent = fmt(totalProfit);
+  document.getElementById('kpi-margin').textContent = (totalProfit/totalRev*100).toFixed(1) + '%';
+  document.getElementById('kpi-txn').textContent    = data.length.toLocaleString();
+  document.getElementById('kpi-aov').textContent    = fmt(totalRev / data.length);
+  document.getElementById('kpi-units').textContent  = totalUnits.toLocaleString();
+
+  // Monthly trend
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mRev = Array(12).fill(0), mPro = Array(12).fill(0);
+  data.forEach(s => { mRev[s.month-1] += s.revenue; mPro[s.month-1] += s.profit; });
+  destroyChart('trend');
+  charts.trend = new Chart(document.getElementById('trendChart'), {
+    data: {
+      labels: months,
+      datasets: [
+        { type:'bar',  label:'Revenue', data: mRev, backgroundColor: 'rgba(56,189,248,0.5)', borderColor:'#38bdf8', borderWidth:1, borderRadius:4, yAxisID:'y' },
+        { type:'line', label:'Profit',  data: mPro, borderColor:'#fb7185', backgroundColor:'rgba(251,113,133,0.1)', borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#fb7185', fill:true, tension:0.4, yAxisID:'y1' }
+      ]
+    },
+    options: {
+      responsive:true, interaction:{mode:'index',intersect:false},
+      plugins:{ legend:{ labels:{ color:'#94a3b8', boxWidth:12 } } },
+      scales:{
+        y:  { grid:{color:'#1e2440'}, ticks:{color:'#475569', callback:v=>fmt(v)}, position:'left' },
+        y1: { grid:{display:false}, ticks:{color:'#475569', callback:v=>fmt(v)}, position:'right' },
+        x:  { grid:{display:false}, ticks:{color:'#475569'} }
+      }
+    }
+  });
+
+  // Region
+  const regMap = {};
+  data.forEach(s => { regMap[s.region] = (regMap[s.region]||0) + s.revenue; });
+  const regSorted = Object.entries(regMap).sort((a,b)=>b[1]-a[1]);
+  destroyChart('region');
+  charts.region = new Chart(document.getElementById('regionChart'), {
+    type:'bar',
+    data:{ labels: regSorted.map(r=>r[0]), datasets:[{ data: regSorted.map(r=>r[1]),
+      backgroundColor: PALETTE.slice(0,5).map(c=>c+'99'), borderColor: PALETTE.slice(0,5), borderWidth:1, borderRadius:6 }] },
+    options:{
+      indexAxis:'y', responsive:true,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{color:'#1e2440'}, ticks:{color:'#475569', callback:v=>fmt(v)} },
+        y:{ grid:{display:false}, ticks:{color:'#94a3b8'} }
+      }
+    }
+  });
+
+  // Products
+  const prodMap = {};
+  data.forEach(s => { prodMap[s.product] = (prodMap[s.product]||0) + s.revenue; });
+  const prodSorted = Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  destroyChart('product');
+  charts.product = new Chart(document.getElementById('productChart'), {
+    type:'bar',
+    data:{ labels: prodSorted.map(p=>p[0]), datasets:[{ data: prodSorted.map(p=>p[1]),
+      backgroundColor: 'rgba(56,189,248,0.6)', borderColor:'#38bdf8', borderWidth:1, borderRadius:5 }] },
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false} },
+      scales:{
+        y:{ grid:{color:'#1e2440'}, ticks:{color:'#475569', callback:v=>fmt(v)} },
+        x:{ grid:{display:false}, ticks:{color:'#94a3b8', maxRotation:30} }
+      }
+    }
+  });
+
+  // Category donut
+  const catMap = {};
+  data.forEach(s => { catMap[s.category] = (catMap[s.category]||0) + s.revenue; });
+  destroyChart('category');
+  charts.category = new Chart(document.getElementById('categoryChart'), {
+    type:'doughnut',
+    data:{ labels: Object.keys(catMap), datasets:[{ data: Object.values(catMap),
+      backgroundColor: PALETTE.slice(0,4).map(c=>c+'cc'),
+      borderColor: PALETTE.slice(0,4), borderWidth:2, hoverOffset:8 }] },
+    options:{
+      responsive:true, cutout:'55%',
+      plugins:{
+        legend:{ position:'bottom', labels:{ color:'#94a3b8', padding:12, boxWidth:10 } }
+      }
+    }
+  });
+
+  // Channel
+  const chMap = {};
+  data.forEach(s => { chMap[s.channel] = (chMap[s.channel]||0) + s.revenue; });
+  destroyChart('channel');
+  charts.channel = new Chart(document.getElementById('channelChart'), {
+    type:'bar',
+    data:{ labels: Object.keys(chMap), datasets:[{ data: Object.values(chMap),
+      backgroundColor:['rgba(56,189,248,0.6)','rgba(251,113,133,0.6)','rgba(74,222,128,0.6)'],
+      borderColor:['#38bdf8','#fb7185','#4ade80'], borderWidth:1, borderRadius:8 }] },
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false} },
+      scales:{
+        y:{ grid:{color:'#1e2440'}, ticks:{color:'#475569', callback:v=>fmt(v)} },
+        x:{ grid:{display:false}, ticks:{color:'#94a3b8'} }
+      }
+    }
+  });
+
+  // Leaderboard
+  const repMap = {};
+  data.forEach(s => {
+    if (!repMap[s.rep]) repMap[s.rep] = { rev:0, deals:0 };
+    repMap[s.rep].rev   += s.revenue;
+    repMap[s.rep].deals += 1;
+  });
+  const repSorted = Object.entries(repMap).sort((a,b)=>b[1].rev-a[1].rev);
+  const tbody = document.getElementById('rep-tbody');
+  tbody.innerHTML = repSorted.map(([name, d], i) => `
+    <tr>
+      <td class="rank-num">${i+1}</td>
+      <td>${name}</td>
+      <td class="money">${fmt(d.rev)}</td>
+      <td style="color:#94a3b8">${d.deals}</td>
+      <td>${i < 3 ? '<span class="badge-top">Top</span>' : i < 5 ? '<span class="badge-mid">Good</span>' : ''}</td>
+    </tr>`).join('');
+}
+
+function applyFilters() { renderAll(); }
+function resetFilters() {
+  ['f-region','f-channel','f-category','f-quarter'].forEach(id => {
+    document.getElementById(id).value = 'all';
+  });
+  renderAll();
+}
+
+// Nav pills
+document.querySelectorAll('.pill').forEach(p => {
+  p.addEventListener('click', function() {
+    document.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Init
+renderAll();
+</script>
+</body>
+</html>
